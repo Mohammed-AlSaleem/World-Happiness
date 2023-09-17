@@ -1,0 +1,223 @@
+---
+title: "Appendix"
+output: pdf_document
+---
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+d2015 = read.csv('data/2015.csv'); d2016 = read.csv('data/2016.csv')
+d2017 = read.csv('data/2017.csv'); d2018 = read.csv('data/2018.csv')
+d2019 = read.csv('data/2019.csv'); d2020 = read.csv('data/2020.csv')
+d2021 = read.csv('data/2021.csv'); d2022 = read.csv('data/2022.csv')
+Od2021 = read.csv('data/O_2021.csv')
+```
+# Explor data
+## Top countries:
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+head(d2015[c(1:4)],2); head(d2016[c(1:4)],2)
+head(d2017[c(1:4)],2); head(d2018[c(1:4)],2)
+head(d2019[c(1:4)],2); head(d2020[c(1:4)],2)
+head(d2021[c(1:4)],2); head(d2022[c(1:4)],2)
+```
+
+Finland is the happiest country from 2018 until now.
+
+## Bottom countries:
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+tail(d2015[c(1:4)],2); tail(d2016[c(1:4)],2)
+tail(d2017[c(1:4)],2); tail(d2018[c(1:4)],2)
+tail(d2019[c(1:4)],2); tail(d2020[c(1:4)],2)
+tail(d2021[c(1:4)],2); tail(d2022[c(1:4)],2)
+```
+
+Burundi was in the saddest two countries from 2015 to 2018. From 2020 to now Afghanistan is the saddest country.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+y=rep(2015,length(d2015$Happiness.Score)); d2015['year'] = y
+y=rep(2016,length(d2016$Happiness.Score)); d2016['year'] = y
+y=rep(2017,length(d2017$Happiness.Score)); d2017['year'] = y
+y=rep(2018,length(d2018$Happiness.Score)); d2018['year'] = y
+y=rep(2019,length(d2019$Happiness.Score)); d2019['year'] = y
+y=rep(2020,length(d2020$Happiness.Score)); d2020['year'] = y
+y=rep(2021,length(d2021$Happiness.Score)); d2021['year'] = y
+y=rep(2022,length(d2022$Happiness.Score)); d2022['year'] = y
+
+years = rbind(d2015,d2016,d2017,d2018,d2019,d2020,d2021,d2022)[c(2,4,12)]
+nfRegion = as.numeric(as.factor(years$Region))
+plot(years$year,years$Happiness.Score, main= 'Happiness Scores across years', xlab= 'Year',
+     ylab= 'Happiness Score',
+     col=c('blue','red','green','brown','orange','yellow','purple','black','pink','navy')[nfRegion])
+# print('Each year mean:')
+# for (i in 2015:2022) print(mean(years[years$year == i, 'Happiness.Score']))
+lines(unique(x=years$year),y=c(5.376,5.3822,5.354,5.3759,5.4071,5.4732,5.5328,5.5536))
+plot(unique(x=years$year),y=c(5.376,5.3822,5.354,5.3759,5.4071,5.4732,5.5328,5.5536),main = "Happiness mean", xlab = "Year", ylab = "Mean of the year")
+```
+
+We see there are no significant difference between the years except small non-linear increasing.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+sort(unique(years$Region)) # The order of the regions as their factor (from 1 to 10)
+
+plot(nfRegion ,years$Happiness.Score, main= 'Happiness Scores across Regions', xlab= 'Regions',
+     ylab= 'Happiness Score',)
+abline(h=mean(years$Happiness.Score))
+```
+
+Australia, New Zealand, North America, and ANZ always had a high happiness score. Sub-Saharan Africa vary from average countries to sad countries. Opposite to Sub-Saharan Africa, Western Europe vary from average countries to happy countries.
+
+Regions will be added to the model to test if their effect is significant.
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+library(rworldmap)
+d <- data.frame(
+  country=Od2021$Country, value=Od2021$Happiness.Score)
+n <- invisible(joinCountryData2Map(d, joinCode="NAME", nameJoinColumn="country"))
+mapCountryData(n, nameColumnToPlot="value", mapTitle="World Map for Happiness Score 2021",
+               colourPalette=c('red','orange','blue','green','yellow'), oceanCol="#CCCCCCCC",
+               addLegend = TRUE,aspect = 1.1, borderCol = "Black", lwd =.1)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+sort(unique(Od2021$Region)) # The order of the regions as their factor (from 1 to 9)
+nfRegion = as.numeric(as.factor(Od2021$Region))
+GDP = exp(Od2021$Economy)
+Od2021=cbind(Od2021,nfRegion,GDP)
+pairs(Od2021[c('Happiness.Score',	'nfRegion',	'GDP',	'Family',	'Health',
+               'Freedom',	'Trust',	'Generosity')], panel=panel.smooth)
+Od2021=Od2021[,-12] # delete GDP
+```
+
+GDP need to be transformed by logged (Economy variable).
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(GGally)
+ggpairs(Od2021[,-(1:3)]) # The scatter matrix visualizes all the correlation between the happiness score and the factors.
+```
+
+The high correlations are: Economy:Health (0.859), Economy:Family (0.785), Family:Health (0.723).
+
+# Modeling
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+model0 = lm(Happiness.Score~.-Happiness.Rank-Country-Region, data = Od2021)
+library(car)
+vif(model0)
+```
+
+Economy have the highest VIF (5.1656), so we will delete it.
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+model1 = lm(Happiness.Score~Family+Health+Freedom+Trust+Generosity+nfRegion, data = Od2021)
+summary(model1)[c('coefficients','adj.r.squared')]
+vif(model1)
+```
+
+VIF values reasonable now.
+
+Family has a curved plot against Happiness Scores,
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+par(mfrow= c(1,2))
+plot(Od2021$Family,Od2021$Happiness.Score, main= 'Happiness Scores vs Family',
+     xlab= 'Family Support', ylab= 'Happiness Score')
+plot((Od2021$Family)**2,Od2021$Happiness.Score, main= 'Happiness Scores vs Family^2',
+     xlab= 'Family Support^2', ylab= 'Happiness Score')
+```
+
+after squaring Family, it give us more linear fit.
+
+## backward selection:
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+model2 = lm(Happiness.Score~I(Family**2)+Health+Freedom+Trust+Generosity+nfRegion, data = Od2021)
+summary(model2)[c('coefficients','adj.r.squared')]
+model3 = lm(Happiness.Score~I(Family**2)+Health+Freedom+Trust+nfRegion, data = Od2021)
+summary(model3)[c('coefficients','adj.r.squared')]
+model4 = lm(Happiness.Score~I(Family**2)+Health+Freedom+Trust+nfRegion-1, data = Od2021)
+summary(model4)[c('coefficients','adj.r.squared')]
+modelf = lm(Happiness.Score~I(Family**2)+Health+Freedom+Trust-1, data = Od2021)
+summary(modelf)[c('coefficients','adj.r.squared')]
+```
+
+## For model0:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+par(mfrow= c(2,2))
+plot(model0, which = 1); plot(model0, which = 2); plot(model0, which = 4)
+par(mfrow= c(1,1))
+
+shapiro.test(model0$residuals)
+ncvTest(model0)
+```
+
+## For modelf:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+par(mfrow= c(2,2))
+plot(modelf, which = 1); plot(modelf, which = 2); plot(modelf, which = 4)
+par(mfrow= c(1,1))
+
+shapiro.test(modelf$residuals)
+ncvTest(modelf)
+anova(model0,modelf)
+```
+
+anova fail to reject **modelf** different than **model0**, but **modelf** have fewer variables and all of them are significant, and higher adj.R^2 (0.9904).
+
+The model rejected by Shapiro test for normality and by ncvTest, but it still better than other models.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+residualPlots(modelf, main='Residual Plots')
+hist(modelf$residuals, breaks =20, main= 'Histogram of model\'s residuals', xlab= 'Residuals')
+```
+
+residual plots, and the histogram of residuals give acceptable graphs.
+
+# The Final model:
+## Happiness.Score = 2.5624×I(Family^2) + 0.0467×Health + 1.7974×Freedom - 0.9048×Trust
+\
+
+# Logistic
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+happy = ifelse(Od2021$Happiness.Score > mean(Od2021$Happiness.Score), 1, 0)
+Ld2021=cbind(Od2021,happy)
+```
+
+## AIC for backward selection models:
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+Lmodel0 = glm(happy~.-Happiness.Score-Happiness.Rank-Country-Region, data = Ld2021, family = binomial)
+summary(Lmodel0)[c('coefficients','aic')]
+Lmodel1 = glm(happy~Economy+Family+Health+Freedom+Trust+Generosity, data = Ld2021, family = binomial)
+summary(Lmodel1)[c('coefficients','aic')]
+Lmodel2 = glm(happy~Family+Health+Freedom+Trust+Generosity, data = Ld2021, family = binomial)
+summary(Lmodel2)[c('coefficients','aic')]
+Lmodel3 = glm(happy~Family+Health+Freedom+Generosity, data = Ld2021, family = binomial)
+summary(Lmodel3)[c('coefficients','aic')]
+Lmodel4 = glm(happy~Family+Health+Freedom, data = Ld2021, family = binomial)
+summary(Lmodel4)[c('coefficients','aic')]
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(pROC)
+resROC = roc(Ld2021$happy ~ Lmodel4$fitted)
+plot(resROC, print.auc = T, legacy.axes = T, main = 'ROC curve')
+```
+
+From the ROC plot curve and the high value of AUC equal to 0.952, we conclude that the Lmodel4 have a good fit.
+
+## The final logistic model: log(odds) = -44.3549 + 18.3826×Family + 0.3361×Health + 8.4726×Freedom
+\
+
+## confusion matrix
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+glm.probs <- predict(Lmodel4, type="response")
+Lmodel4.pred = rep("No", nrow(Ld2021))
+Lmodel4.pred[glm.probs > 0.5] = "Yes"
+(mytable <- table(Lmodel4.pred, Ld2021$happy))
+
+APER = (mytable[1,2]+mytable[2,1])/nrow(Ld2021)
+Accuracy = 1-APER
+Sensitivity = mytable[1,1]/(mytable[1,1] + mytable[2,1])
+Specificity = mytable[2,2]/(mytable[1,2] + mytable[2,2])
+paste0('Accuracy = ',round(Accuracy,4))
+paste0('Sensitivity = ',round(Sensitivity,4))
+paste0('Specificity = ',round(Specificity,4))
+```
+All Accuracy, Sensitivity, and Specificity have big value which tell the predict is good.

@@ -7,6 +7,9 @@ Multiple linear regression is used to fit a model that can predict the happiness
 
 ## The scientific goals
 • Explore the dataset across the years and regions, and if COVID-19 left an effect on the world's happiness.
+
 • investigate the collinearity and the correlation between factors.
+
 • Create a model from the original data for the year 2021.
+
 • Simple prediction for happy and non-happy countries (logistic regression).
